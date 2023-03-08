@@ -7,7 +7,7 @@ from Container import Container
 
 
 class Solver:
-    def __init__(self, n_bays, n_stacks, n_tiers):
+    def __init__(self, n_bays: int, n_stacks: int, n_tiers: int) -> None:
         self.n_bays = n_bays
         self.n_stacks = n_stacks
         self.n_tiers = n_tiers
@@ -21,7 +21,7 @@ class Solver:
         self.cog = [0, 0]
         self.total_weight_containers = 0
 
-    def copy(self):
+    def copy(self) -> "Solver":
         new_solution = Solver(self.n_bays, self.n_stacks, self.n_tiers)
 
         for bay in range(self.n_bays):
@@ -37,7 +37,7 @@ class Solver:
 
         return new_solution
 
-    def construct(self):
+    def construct(self) -> None:
         """
         Simple construction heuristic.
         Takes the first container in the list, and places it in the
@@ -52,7 +52,7 @@ class Solver:
                     self.flow_x[bay][stack][tier] = i
                     i += 1
 
-    def calculate_objective(self, containers):
+    def calculate_objective(self, containers: list[Container]) -> float:
         """
         Calculate the objective function for the current solution. Updates self.objective.
         """
@@ -91,7 +91,7 @@ class Solver:
 
         return evaluation
 
-    def print_solution(self):
+    def print_solution(self) -> None:
         print("Current solution:")
 
         for bay in range(self.n_bays):
@@ -101,7 +101,7 @@ class Solver:
                         f"Bay: {bay}, stack: {stack}, tier: {tier}, container: {self.flow_x[bay][stack][tier]}"
                     )
 
-    def construction_improved(self, containers):
+    def construction_improved(self, containers) -> None:
         """Places the heaviest container nearest the middle of the ship."""
         # Calculate the desired center of gravity
         cog = np.array([self.n_bays, self.n_stacks]) / 2
@@ -139,13 +139,15 @@ class Solver:
             # )
         # print(self.flow_x)
 
-    def num_to_placement(self, num):
+    def num_to_placement(self, num: int) -> tuple[int, int, int]:
+        """converts a number to a bay, stack, tier placement"""
         bay = num % self.n_bays
         stack = (num // self.n_bays) % self.n_stacks
         tier = num // (self.n_stacks * self.n_bays)
         return bay, stack, tier
 
-    def two_swap(self, a, b):
+    def two_swap(self, a: int, b: int) -> None:
+        """Swaps two containers in the solver, based on their number"""
         from_bay, from_stack, from_tier = self.num_to_placement(a)
         to_bay, to_stack, to_tier = self.num_to_placement(b)
         (
@@ -156,14 +158,14 @@ class Solver:
             self.flow_x[from_bay][from_stack][from_tier],
         )
 
-    def local_search_two_swap(self, containers):
+    def local_search_two_swap(self, containers: list[Container]) -> None:
         improvement = True
 
         indices = list(range(len(containers)))
         swap_combos = list(combinations(indices, 2))
 
         while improvement:
-            original_objective = copy.deepcopy(self.calculate_objective(containers))
+            original_objective = self.calculate_objective(containers)
 
             improvement = False
             improvement_amount = 0
@@ -172,9 +174,10 @@ class Solver:
 
             # swap containers and get improvement value
             for swap_combo in swap_combos:
+                # swap and test
                 self.two_swap(swap_combo[0], swap_combo[1])
 
-                cur_obj = copy.deepcopy(self.calculate_objective(containers))
+                cur_obj = self.calculate_objective(containers)
 
                 current_improvement_amount = original_objective - cur_obj
 
@@ -192,7 +195,8 @@ class Solver:
                 improvement = True
                 self.two_swap(best_from, best_to)
 
-    def three_swap(self, a, b, c):
+    def three_swap(self, a: int, b: int, c: int) -> None:
+        """Swaps three containers in the solver, based on their number"""
         a_bay, a_stack, a_tier = self.num_to_placement(a)
         b_bay, b_stack, b_tier = self.num_to_placement(b)
         c_bay, c_stack, c_tier = self.num_to_placement(c)
@@ -207,7 +211,7 @@ class Solver:
             self.flow_x[a_bay][a_stack][a_tier],
         )
 
-    def local_search_three_swap(self, containers):
+    def local_search_three_swap(self, containers: list[Container]) -> None:
         improvement = True
 
         indices = list(range(len(containers)))
@@ -244,5 +248,7 @@ class Solver:
                 improvement = True
                 self.three_swap(best_a, best_b, best_c)
 
-    def tabu_search_heuristic(self, containers, n_iterations):
+    def tabu_search_heuristic(
+        self, containers: list[Container], n_iterations: int
+    ) -> None:
         pass
