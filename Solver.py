@@ -1,5 +1,6 @@
 import copy
 from itertools import combinations
+import time
 
 import numpy as np
 
@@ -158,13 +159,24 @@ class Solver:
             self.flow_x[from_bay][from_stack][from_tier],
         )
 
-    def local_search_two_swap(self, containers: list[Container]) -> None:
+    def local_search_two_swap(
+        self, containers: list[Container], n_iterations: int, greedy: bool = False
+    ) -> None:
         improvement = True
 
         indices = list(range(len(containers)))
         swap_combos = list(combinations(indices, 2))
 
-        while improvement:
+        # print(f"Swap combinations: {swap_combos}")
+        print(f"Number of swap combinations: {len(swap_combos)}")
+
+        _iter = 0
+
+        while improvement and _iter < n_iterations:
+            _iter += 1
+            print(f"Iteration {_iter} in two swap")
+            start = time.monotonic()
+
             original_objective = self.calculate_objective(containers)
 
             improvement = False
@@ -183,9 +195,14 @@ class Solver:
 
                 if current_improvement_amount > improvement_amount:
                     improvement_amount = current_improvement_amount
-                    # print(improvement_amount)
                     best_from = swap_combo[0]
                     best_to = swap_combo[1]
+
+                    if greedy:
+                        improvement = True
+                        end = time.monotonic()
+                        print(f"Improvement found in {end - start} seconds")
+                        break
 
                 # swap back
                 self.two_swap(swap_combo[1], swap_combo[0])
@@ -194,6 +211,9 @@ class Solver:
             if improvement_amount > 0:
                 improvement = True
                 self.two_swap(best_from, best_to)
+
+            end = time.monotonic()
+            print(f"Improvement found in {end - start} seconds")
 
     def three_swap(self, a: int, b: int, c: int) -> None:
         """Swaps three containers in the solver, based on their number"""
@@ -211,13 +231,23 @@ class Solver:
             self.flow_x[a_bay][a_stack][a_tier],
         )
 
-    def local_search_three_swap(self, containers: list[Container]) -> None:
+    def local_search_three_swap(
+        self, containers: list[Container], n_iterations: int, greedy: bool = False
+    ) -> None:
         improvement = True
 
         indices = list(range(len(containers)))
         swap_combos = list(combinations(indices, 3))
 
-        while improvement:
+        # print(f"Swap combinations: {swap_combos}")
+        print(f"Number of swap combinations: {len(swap_combos)}")
+
+        _iter = 0
+        while improvement and _iter < n_iterations:
+            _iter += 1
+            print(f"Iteration {_iter} in three swap")
+
+            start = time.monotonic()
 
             original_objective = copy.deepcopy(self.calculate_objective(containers))
 
@@ -240,6 +270,12 @@ class Solver:
                     best_b = swap_combo[1]
                     best_c = swap_combo[2]
 
+                    if greedy:
+                        improvement = True
+                        end = time.monotonic()
+                        print(f"Improvement found in {end - start} seconds")
+                        break
+
                 # swap back
                 self.three_swap(swap_combo[0], swap_combo[2], swap_combo[1])
 
@@ -248,7 +284,83 @@ class Solver:
                 improvement = True
                 self.three_swap(best_a, best_b, best_c)
 
+            end = time.monotonic()
+            print(f"Improvement found in {end - start} seconds")
+
+    def remove_same_stack_combos(self, swap_combos: list[int, int]) -> list[int, int]:
+        """Removes swap combos that are the same stack"""
+        new_combos = []
+        for swap_combo in swap_combos:
+            combo_1_bay, combo_1_stack, _ = self.num_to_placement(swap_combo[0])
+            combo_2_bay, combo_2_stack, _ = self.num_to_placement(swap_combo[1])
+            if not (combo_1_stack == combo_2_stack and combo_1_bay == combo_2_bay):
+                new_combos.append(swap_combo)
+        return new_combos
+
     def tabu_search_heuristic(
         self, containers: list[Container], n_iterations: int
     ) -> None:
-        pass
+        """Performs a tabu search heuristic on the solver"""
+        tabu_list = []
+
+        best_objective = self.calculate_objective(containers)
+        best_solution = copy.deepcopy(self.flow_x)
+
+        for _iter in range(n_iterations):
+            print(f"Iteration {_iter + 1} of {n_iterations}")
+
+            start = time.monotonic()
+
+            original_objective = self.calculate_objective(containers)
+
+            indices = list(range(len(containers)))
+            # remove tabu values from indices
+            indices = [i for i in indices if i not in tabu_list]
+            swap_combos = list(combinations(indices, 2))
+
+            # remove same stack combos
+            swap_combos = self.remove_same_stack_combos(swap_combos)
+
+            improvement_amount = -np.inf
+            _from = None
+            _to = None
+
+            # swap containers and get improvement value
+            for swap_combo in swap_combos:
+                # swap and test
+                self.two_swap(swap_combo[0], swap_combo[1])
+
+                cur_obj = self.calculate_objective(containers)
+
+                current_improvement_amount = original_objective - cur_obj
+
+                if current_improvement_amount > improvement_amount:
+                    improvement_amount = current_improvement_amount
+                    # print(improvement_amount)
+                    _from = swap_combo[0]
+                    _to = swap_combo[1]
+
+                # swap back
+                self.two_swap(swap_combo[1], swap_combo[0])
+
+            # if improvement, swap containers
+            self.two_swap(_from, _to)
+            # remove from tabu list if more than three iterations passed
+            if len(tabu_list) == 6:
+                tabu_list.pop(0)
+                tabu_list.pop(0)
+            # add new tabu values
+            tabu_list.append(_from)
+            tabu_list.append(_to)
+
+            best_obj_in_iter = self.calculate_objective(containers)
+
+            if best_obj_in_iter < best_objective:
+                best_objective = best_obj_in_iter
+                best_solution = copy.deepcopy(self.flow_x)
+
+            # print("Iteration: ", _iter, "Objective: ", best_obj_in_iter)
+            end = time.monotonic()
+            print(f"Improvement found in {end - start} seconds")
+
+        self.flow_x = best_solution
