@@ -160,7 +160,11 @@ class Solver:
         )
 
     def local_search_two_swap(
-        self, containers: list[Container], n_iterations: int, greedy: bool = False
+        self,
+        containers: list[Container],
+        max_iterations: int,
+        greedy: bool = False,
+        verbose: bool = False,
     ) -> None:
         improvement = True
 
@@ -168,13 +172,15 @@ class Solver:
         swap_combos = list(combinations(indices, 2))
 
         # print(f"Swap combinations: {swap_combos}")
-        print(f"Number of swap combinations: {len(swap_combos)}")
+        if verbose:
+            print(f"Number of swap combinations: {len(swap_combos)}")
 
         _iter = 0
 
-        while improvement and _iter < n_iterations:
+        while improvement and _iter < max_iterations:
             _iter += 1
-            print(f"Iteration {_iter} in two swap")
+            if verbose:
+                print(f"Iteration {_iter} in two swap")
             start = time.monotonic()
 
             original_objective = self.calculate_objective(containers)
@@ -201,7 +207,10 @@ class Solver:
                     if greedy:
                         improvement = True
                         end = time.monotonic()
-                        print(f"Improvement found in {end - start} seconds")
+                        if verbose:
+                            print(
+                                f"Improvement found in {end - start} seconds, new objective: {cur_obj}, improvement: {improvement_amount}"
+                            )
                         break
 
                 # swap back
@@ -213,7 +222,8 @@ class Solver:
                 self.two_swap(best_from, best_to)
 
             end = time.monotonic()
-            print(f"Improvement found in {end - start} seconds")
+            if verbose:
+                print(f"Improvement found in {end - start} seconds")
 
     def three_swap(self, a: int, b: int, c: int) -> None:
         """Swaps three containers in the solver, based on their number"""
@@ -232,7 +242,11 @@ class Solver:
         )
 
     def local_search_three_swap(
-        self, containers: list[Container], n_iterations: int, greedy: bool = False
+        self,
+        containers: list[Container],
+        max_iterations: int,
+        greedy: bool = False,
+        verbose: bool = False,
     ) -> None:
         improvement = True
 
@@ -243,9 +257,10 @@ class Solver:
         print(f"Number of swap combinations: {len(swap_combos)}")
 
         _iter = 0
-        while improvement and _iter < n_iterations:
+        while improvement and _iter < max_iterations:
             _iter += 1
-            print(f"Iteration {_iter} in three swap")
+            if verbose:
+                print(f"Iteration {_iter} in three swap")
 
             start = time.monotonic()
 
@@ -273,7 +288,10 @@ class Solver:
                     if greedy:
                         improvement = True
                         end = time.monotonic()
-                        print(f"Improvement found in {end - start} seconds")
+                        if verbose:
+                            print(
+                                f"Improvement found in {end - start} seconds, new objective: {cur_obj}, improvement: {improvement_amount}"
+                            )
                         break
 
                 # swap back
@@ -285,7 +303,8 @@ class Solver:
                 self.three_swap(best_a, best_b, best_c)
 
             end = time.monotonic()
-            print(f"Improvement found in {end - start} seconds")
+            if verbose:
+                print(f"Improvement found in {end - start} seconds")
 
     def remove_same_stack_combos(self, swap_combos: list[int, int]) -> list[int, int]:
         """Removes swap combos that are the same stack"""
@@ -298,7 +317,11 @@ class Solver:
         return new_combos
 
     def tabu_search_heuristic(
-        self, containers: list[Container], n_iterations: int
+        self,
+        containers: list[Container],
+        n_iterations: int,
+        max_iterations: int,
+        verbose: bool = False,
     ) -> None:
         """Performs a tabu search heuristic on the solver"""
         tabu_list = []
@@ -306,8 +329,9 @@ class Solver:
         best_objective = self.calculate_objective(containers)
         best_solution = copy.deepcopy(self.flow_x)
 
-        for _iter in range(n_iterations):
-            print(f"Iteration {_iter + 1} of {n_iterations}")
+        for _iter in range(max_iterations):
+            if verbose:
+                print(f"Iteration {_iter + 1} of {n_iterations}")
 
             start = time.monotonic()
 
@@ -353,6 +377,12 @@ class Solver:
             tabu_list.append(_from)
             tabu_list.append(_to)
 
+            if _iter % n_iterations == 0:
+                # do random swap
+                random_swap_idx = np.random.choice(np.arange(len(swap_combos)), 1)
+                random_swap = swap_combos[random_swap_idx[0]]
+                self.two_swap(random_swap[0], random_swap[1])
+
             best_obj_in_iter = self.calculate_objective(containers)
 
             if best_obj_in_iter < best_objective:
@@ -361,6 +391,7 @@ class Solver:
 
             # print("Iteration: ", _iter, "Objective: ", best_obj_in_iter)
             end = time.monotonic()
-            print(f"Improvement found in {end - start} seconds")
+            if verbose:
+                print(f"Improvement found in {end - start} seconds")
 
         self.flow_x = best_solution

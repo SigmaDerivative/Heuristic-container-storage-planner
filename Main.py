@@ -3,7 +3,7 @@ from Solver import Solver
 from Vessel import Vessel
 
 # Set data file
-filename = "data/instance2.txt"
+filename = "data/instance1.txt"
 
 if __name__ == "__main__":
     # Read from data file
@@ -36,19 +36,25 @@ if __name__ == "__main__":
 
     # Improvement phase
     print("TASK 2A")
-    solver.local_search_two_swap(containers, n_iterations=100, greedy=True)
+    solver.local_search_two_swap(
+        containers, max_iterations=100, greedy=True, verbose=False
+    )
     solver.calculate_objective(containers)
     print(solver.objective)
 
     print("TASK 2B")
-    solver.local_search_three_swap(containers, n_iterations=100, greedy=True)
+    solver.local_search_three_swap(
+        containers, max_iterations=100, greedy=True, verbose=False
+    )
     solver.calculate_objective(containers)
     print(solver.objective)
 
     print("TASK 3")
-    solver.tabu_search_heuristic(containers, n_iterations=100)
+    solver.tabu_search_heuristic(
+        containers, n_iterations=100, max_iterations=1000, verbose=False
+    )
     solver.calculate_objective(containers)
     print(solver.objective)
 
     # Print the solution
-    # solver.print_solution()
+    solver.print_solution()
